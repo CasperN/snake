@@ -8,7 +8,11 @@ use sdl2::rect::Rect;
 use sdl2::render::Canvas;
 use std::time::Duration;
 
-mod EventParser;
+mod event_parser;
+use event_parser::parse_event;
+
+mod game_state;
+use game_state::{Tetris, PlayState};
 
 
 
@@ -28,6 +32,7 @@ fn main() {
 
   let mut rect_col = Color::RGB(0, 0, 0);
 
+  let mut tetris = Tetris::new(10,10);
 
   'game_loop: loop {
     canvas.set_draw_color(Color::RGB(0, 0, 0));
@@ -39,15 +44,21 @@ fn main() {
       if let Event::Quit{..} = event {
         break 'game_loop
       }
-      let control = EventParser::parse_event(event);
+
+      let control = parse_event(event);
       if let Some(c) = control {
         println!("{:?}", c);
+        tetris.control(c);
       }
     }
 
+    if tetris.playing == PlayState::Quit {
+      break 'game_loop
+    }
+
+
     canvas.set_draw_color(rect_col);
     canvas.fill_rect(Rect::new(200, 200, 400, 500));
-
 
     canvas.present();
     std::thread::sleep(Duration::from_millis(1));
