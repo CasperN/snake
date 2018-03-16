@@ -1,19 +1,14 @@
 
 
-
 extern crate sdl2;
-use sdl2::pixels::Color;
+// use sdl2::pixels::Color;
 use sdl2::event::Event;
-use sdl2::rect::Rect;
-use sdl2::render::Canvas;
+// use sdl2::render::Canvas;
 use std::time::Duration;
 
-mod event_parser;
-use event_parser::parse_event;
-
 mod game_state;
-use game_state::{Tetris, PlayState};
-
+mod game_render;
+use game_state::{Game, PlayState, parse_event};
 
 
 fn main() {
@@ -30,13 +25,9 @@ fn main() {
   let mut canvas = window.into_canvas().build().unwrap();
   let mut event_pump = sdl_context.event_pump().unwrap();
 
-  let mut rect_col = Color::RGB(0, 0, 0);
-
-  let mut tetris = Tetris::new(10,10);
+  let mut snake = Game::new(10,10);
 
   'game_loop: loop {
-    canvas.set_draw_color(Color::RGB(0, 0, 0));
-    canvas.clear();
 
     for event in event_pump.poll_iter() {
       // IO handler
@@ -47,21 +38,21 @@ fn main() {
 
       let control = parse_event(event);
       if let Some(c) = control {
-        println!("{:?}", c);
-        tetris.control(c);
+        snake.control_update(c);
       }
     }
 
-    if tetris.playing == PlayState::Quit {
+    snake.time_update();
+
+    if snake.play_state == PlayState::Quit {
       break 'game_loop
     }
 
 
-    canvas.set_draw_color(rect_col);
-    canvas.fill_rect(Rect::new(200, 200, 400, 500));
+    game_render::draw(&snake, &mut canvas);
 
     canvas.present();
-    std::thread::sleep(Duration::from_millis(1));
+    std::thread::sleep(Duration::from_millis((1000 / snake.speed) as u64));
   }
   println!("Thanks for playing.");
 }

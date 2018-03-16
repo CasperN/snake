@@ -1,65 +1,136 @@
+use std::collections::LinkedList;
 
-use event_parser::TetrisEvent;
+extern crate sdl2;
+use sdl2::keyboard::Keycode;
+use sdl2::event::Event;
 
-#[derive(Debug, PartialEq)]
+extern crate rand;
+use self::rand::{ThreadRng, Rng};
+
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Movement{
+  Up, Down, Left, Right
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum PlayState{
-  Play, Pause, Quit
+  Play, Pause, Quit, End
 }
 
-enum Tetrimo{
-  Line, S, RS, L, RL, T
+#[derive(Debug, Clone)]
+pub enum UserInput{
+  Movement(Movement), Menu(PlayState)
 }
 
+use self::Movement::{Up, Down, Left, Right};
+use self::PlayState::{Play, Pause, Quit, End};
 
-pub struct Tetris {
-  pub playing: PlayState,
-  piece: Tetrimo,
-  swap: Option<Tetrimo>,
-  x: usize,
-  y: usize,
-  fall_speed: u8,
-  board: Vec<bool>,
-  width: usize,
-  height: usize
-}
+/* --------------------------------------------------------------------------------------------- */
 
-impl Tetris {
-
-  pub fn new(width :usize, height :usize) -> Tetris {
-    // Construct board
-
-    let board = vec![false; width * height];
-    Tetris{ playing:PlayState::Play, piece:Tetrimo::Line, swap: None, x:0, y:0, fall_speed:0,
-            board, height, width}
-  }
-
-  fn is_free(&self, x: usize, y: usize) -> bool {
-    x < self.width && y < self.height && !self.board[y * self.width + x]
-  }
-
-  pub fn control(&mut self, c: TetrisEvent) {
-
-    let (x,y) = match c {
-
-      TetrisEvent::Left  => (self.x - 1, self.y),
-      TetrisEvent::Right => (self.x + 1, self.y),
-      TetrisEvent::Up    => (self.x, self.y + 1),
-      TetrisEvent::Down  => (self.x, self.y - 1),
-      TetrisEvent::FastFall => (self.x, 0),
-      TetrisEvent::Quit  => {
-        self.playing = PlayState::Quit;
-        println!("{:?}", self.playing);
-        return
-      },
-      TetrisEvent::Pause => {
-        self.playing = PlayState::Pause;
-        return
+pub fn parse_event(event: Event) -> Option<UserInput> {
+  match event {
+    Event::KeyDown{keycode: Some(key), ..} => {
+      match key {
+        Keycode::W => Some(UserInput::Movement(Up)), // Up and Down swapped for rendering
+        Keycode::S => Some(UserInput::Movement(Down)),
+        Keycode::A => Some(UserInput::Movement(Left)),
+        Keycode::D => Some(UserInput::Movement(Right)),
+        Keycode::P => Some(UserInput::Menu(Pause)),
+        Keycode::Escape => Some(UserInput::Menu(Quit)),
+        _ => None
       }
-    };
-
-    if self.is_free(x, y) {
-      self.x = x;
-      self.y = y;
-    }
+    },
+    _ => None
   }
+}
+
+pub struct Game {
+  pub play_state: PlayState,
+  xy: (u32,u32),
+  direction: Movement,
+  pub food_xy: (u32, u32),
+  pub speed: u32,
+  pub width: u32,
+  pub height: u32,
+  pub snake: LinkedList<(u32, u32)>,
+  pub score: u32,
+  rng: ThreadRng
+}
+
+impl Game {
+
+  pub fn new(width :u32, height :u32) -> Game {
+    // Construct board
+    let mut rng = rand::thread_rng();
+
+    let food_xy = (rng.gen::<u32>() % width, rng.gen::<u32>() % height);
+    let xy      = (rng.gen::<u32>() % width, rng.gen::<u32>() % height);
+    let mut snake = LinkedList::new();
+
+    snake.push_front(xy);
+
+    let mut g = Game{play_state:Play, xy, direction:Right,
+                     food_xy, speed:1, score:0, width, height, snake, rng};
+    g.place_food();
+    g
+  }
+
+
+  fn place_food(&mut self){
+    let (mut x,mut y) = self.food_xy;
+    while self.snake.contains(&(x, y)) {
+      x = self.rng.gen::<u32>() % self.width;
+      y = self.rng.gen::<u32>() % self.height;
+    }
+    self.food_xy = (x,y);
+  }
+
+  fn move_snake(&mut self){
+
+    // Canvas is flipped so can't go up from y == 0
+    let (mut x, mut y) = self.xy;
+    if (self.direction == Left && x == 0) || (self.direction == Right && x == self.width - 1) ||
+       (self.direction == Up && y == 0) || (self.direction == Down && y == self.height -1) {
+        println!("You hit the wall");
+        self.play_state = Quit;
+        return;
+    }
+
+    match self.direction {
+      Left => x -= 1,
+      Right => x += 1,
+      Up => y -= 1,
+      Down => y += 1
+    };
+    self.xy = (x,y);
+
+    if self.snake.contains(&self.xy) {
+      println!("Oh no you ate yourself.");
+      self.play_state = Quit;
+      return;
+    }
+
+    self.snake.push_front(self.xy);
+    if self.xy != self.food_xy {
+      self.snake.pop_back();
+    } else {
+      self.place_food();
+      self.score += 1;
+    }
+
+  }
+
+  pub fn control_update(&mut self, ui: UserInput){
+    println!("{:?}", ui);
+    match ui {
+      UserInput::Movement(direction) => { self.direction = direction },
+      UserInput::Menu(menu) => { self.play_state = menu; }
+    };
+  }
+
+  pub fn time_update(&mut self){
+    self.move_snake();
+  }
+
 }

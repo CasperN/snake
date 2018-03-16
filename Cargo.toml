@@ -1,8 +1,9 @@
 [package]
-name = "tetrs"
+name = "snake"
 version = "0.1.0"
 authors = ["CasperN <casperneo@uchicago.edu>"]
 
 [dependencies]
 
 sdl2 = "0.31.0"
+rand = "0.4.0"
