@@ -1,5 +1,5 @@
 
-use game_state::Game;
+use game_state::SnakeGame;
 use sdl2;
 use sdl2::rect::Rect;
 use sdl2::render::Canvas;
@@ -7,7 +7,7 @@ use sdl2::pixels::Color;
 
 
 
-pub fn draw(game: & Game, canvas:&mut Canvas<sdl2::video::Window>){
+pub fn draw_snake(game: & SnakeGame, canvas:&mut Canvas<sdl2::video::Window>){
 
     // Background color
     let background_col = Color::RGB(0, 0, 0);
@@ -24,7 +24,10 @@ pub fn draw(game: & Game, canvas:&mut Canvas<sdl2::video::Window>){
     let sw = board.width() / game.width;
 
     canvas.set_draw_color(board_col);
-    canvas.fill_rect(board);
+    let msg = canvas.fill_rect(board);
+    if let Err(m) = msg {
+      println!("Error: {:?}", m);
+    }
 
     let mut square = | x, y, col | // #Currying
       draw_rect(x as i32 * sw as i32 + 100, y as i32 * sh as i32 + 100, sw, sh, col, canvas);
@@ -44,5 +47,8 @@ fn draw_rect(x:i32, y:i32, h:u32, w:u32, color:Color, canvas:&mut Canvas<sdl2::v
 
   let r = Rect::new(x, y, h, w);
   canvas.set_draw_color(color);
-  canvas.fill_rect(r);
+  let msg = canvas.fill_rect(r);
+  if let Err(m) = msg{
+    println!("Error: {:?}", m);
+  }
 }
