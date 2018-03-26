@@ -65,12 +65,12 @@ impl Game {
 
 
 
-  pub fn new(width :u32, height :u32) -> Game {
+  pub fn new(width :u32, height :u32, speed:u32, ) -> Game {
     // Construct board
     let mut rng = rand::thread_rng();
     let mut snake = LinkedList::new();
     let mut g = Game{play_state:Play, xy:(0,0), direction:Right, changed_direction:false,
-                     food_xy:(0,0), speed:3, score:0, width, height, snake, rng};
+                     food_xy:(0,0), speed, score:0, width, height, snake, rng};
 
     g.xy = g.random_square();
     g.set_dir();
@@ -91,19 +91,16 @@ impl Game {
     self.direction = if dx.abs() > dy.abs() {
       if dx > 0 { Right } else { Left }
     } else {
-      if dy > 0 { Up } else { Down }
+      if dy > 0 { Down } else { Up }
     };
   }
 
 
   fn place_food(&mut self){
-    let (mut x,mut y) = self.food_xy;
-    while self.snake.contains(&(x, y)) {
-      let (x_,y_) = self.random_square();
-      x = x_;
-      y = y_;
+    self.food_xy = self.random_square();
+    while self.snake.contains(&self.food_xy){
+      self.food_xy = self.random_square();
     }
-    self.food_xy = (x,y);
   }
 
 
@@ -111,8 +108,15 @@ impl Game {
 
     // Canvas is flipped so can't go up from y == 0
     let (mut x, mut y) = self.xy;
-    if (self.direction == Left && x == 0) || (self.direction == Right && x == self.width - 1) ||
-       (self.direction == Up && y == 0) || (self.direction == Down && y == self.height -1) {
+
+    let walled = match self.direction {
+      Left => x == 0,
+      Right => x == self.width - 1,
+      Up => y == 0,
+      Down => y == self.height -1
+    };
+    
+    if walled {
         println!("You hit the wall");
         self.play_state = End;
         return;
@@ -162,9 +166,17 @@ impl Game {
     match ui {
 
       UserInput::Movement(direction) => {
-        if self.play_state == Play {
-          if !self.changed_direction { self.direction = direction; }
-          self.changed_direction = true;
+        if self.play_state == Play && !self.changed_direction {
+          let not_180 = match self.direction {
+            Left => direction != Right,
+            Right => direction != Left,
+            Up => direction != Down,
+            Down => direction != Up
+          };
+          if not_180 {
+            self.direction = direction;
+            self.changed_direction = true;
+          }
         }
       },
 

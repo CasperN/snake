@@ -25,7 +25,7 @@ fn main() {
   let mut canvas = window.into_canvas().build().unwrap();
   let mut event_pump = sdl_context.event_pump().unwrap();
 
-  let mut snake = Game::new(10,10);
+  let mut snake = Game::new(20,20,10);
 
   'game_loop: loop {
 
