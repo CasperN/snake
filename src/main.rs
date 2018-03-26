@@ -4,12 +4,12 @@ extern crate sdl2;
 // use sdl2::pixels::Color;
 use sdl2::event::Event;
 // use sdl2::render::Canvas;
-use std::time::Duration;
 
 mod game_state;
 mod game_render;
-use game_state::{Game, PlayState, parse_event};
 
+use game_state::{Game, PlayState, parse_event};
+use game_render::{draw_snake, draw_end, draw_menu};
 
 fn main() {
   println!("Hello, world!");
@@ -44,15 +44,13 @@ fn main() {
 
     snake.time_update();
 
-    if snake.play_state == PlayState::Quit {
-      break 'game_loop
+    match snake.play_state {
+       PlayState::Quit => break 'game_loop,
+       PlayState::Play => draw_snake(&snake, &mut canvas),
+       PlayState::Pause => draw_menu(&mut canvas),
+       PlayState::End => draw_end(&mut canvas),
+
     }
-
-
-    game_render::draw(&snake, &mut canvas);
-
-    canvas.present();
-    std::thread::sleep(Duration::from_millis((1000 / snake.speed) as u64));
   }
   println!("Thanks for playing.");
 }

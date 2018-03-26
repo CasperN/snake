@@ -1,4 +1,6 @@
+use std;
 use std::collections::LinkedList;
+use std::time::Duration;
 
 extern crate sdl2;
 use sdl2::keyboard::Keycode;
@@ -55,36 +57,55 @@ pub struct Game {
   pub height: u32,
   pub snake: LinkedList<(u32, u32)>,
   pub score: u32,
+  changed_direction: bool,
   rng: ThreadRng
 }
 
 impl Game {
 
+
+
   pub fn new(width :u32, height :u32) -> Game {
     // Construct board
     let mut rng = rand::thread_rng();
-
-    let food_xy = (rng.gen::<u32>() % width, rng.gen::<u32>() % height);
-    let xy      = (rng.gen::<u32>() % width, rng.gen::<u32>() % height);
     let mut snake = LinkedList::new();
+    let mut g = Game{play_state:Play, xy:(0,0), direction:Right, changed_direction:false,
+                     food_xy:(0,0), speed:3, score:0, width, height, snake, rng};
 
-    snake.push_front(xy);
-
-    let mut g = Game{play_state:Play, xy, direction:Right,
-                     food_xy, speed:1, score:0, width, height, snake, rng};
+    g.xy = g.random_square();
+    g.set_dir();
+    g.snake.push_front(g.xy);
     g.place_food();
     g
+  }
+
+  fn random_square(&mut self) -> (u32, u32) {
+    (self.rng.gen::<u32>() % self.width, self.rng.gen::<u32>() % self.height)
+  }
+
+  fn set_dir(&mut self) {
+    let (x,y) = self.xy;
+    let dx = self.width as i32 - x as i32;
+    let dy = self.height as i32 - y as i32;
+
+    self.direction = if dx.abs() > dy.abs() {
+      if dx > 0 { Right } else { Left }
+    } else {
+      if dy > 0 { Up } else { Down }
+    };
   }
 
 
   fn place_food(&mut self){
     let (mut x,mut y) = self.food_xy;
     while self.snake.contains(&(x, y)) {
-      x = self.rng.gen::<u32>() % self.width;
-      y = self.rng.gen::<u32>() % self.height;
+      let (x_,y_) = self.random_square();
+      x = x_;
+      y = y_;
     }
     self.food_xy = (x,y);
   }
+
 
   fn move_snake(&mut self){
 
@@ -93,7 +114,7 @@ impl Game {
     if (self.direction == Left && x == 0) || (self.direction == Right && x == self.width - 1) ||
        (self.direction == Up && y == 0) || (self.direction == Down && y == self.height -1) {
         println!("You hit the wall");
-        self.play_state = Quit;
+        self.play_state = End;
         return;
     }
 
@@ -107,13 +128,15 @@ impl Game {
 
     if self.snake.contains(&self.xy) {
       println!("Oh no you ate yourself.");
-      self.play_state = Quit;
+      self.play_state = End;
       return;
     }
 
     self.snake.push_front(self.xy);
+
     if self.xy != self.food_xy {
       self.snake.pop_back();
+
     } else {
       self.place_food();
       self.score += 1;
@@ -121,16 +144,46 @@ impl Game {
 
   }
 
+
   pub fn control_update(&mut self, ui: UserInput){
     println!("{:?}", ui);
+
+    if self.play_state == End {
+      self.xy = self.random_square();
+      self.snake = LinkedList::new();
+      self.snake.push_front(self.xy);
+      self.set_dir();
+      self.place_food();
+      self.score = 0;
+      self.play_state = Play;
+    }
+
+
     match ui {
-      UserInput::Movement(direction) => { self.direction = direction },
-      UserInput::Menu(menu) => { self.play_state = menu; }
+
+      UserInput::Movement(direction) => {
+        if self.play_state == Play {
+          if !self.changed_direction { self.direction = direction; }
+          self.changed_direction = true;
+        }
+      },
+
+      UserInput::Menu(menu) => {
+        self.play_state = match menu {
+          Pause => if self.play_state == Pause { Play } else { Pause },
+          Quit => Quit,
+          _ => {unreachable!()}
+        }
+      }
     };
   }
 
-  pub fn time_update(&mut self){
-    self.move_snake();
-  }
 
+  pub fn time_update(&mut self){
+    if self.play_state == Play {
+      self.move_snake();
+      self.changed_direction = false;
+      std::thread::sleep(Duration::from_millis((1000 / self.speed) as u64));
+    }
+  }
 }
