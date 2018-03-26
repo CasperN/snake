@@ -115,7 +115,7 @@ impl Game {
       Up => y == 0,
       Down => y == self.height -1
     };
-    
+
     if walled {
         println!("You hit the wall");
         self.play_state = End;
