@@ -9,7 +9,6 @@ use std::time::Duration;
 
 mod controller;
 mod game_state;
-mod game_render;
 use controller::{parse_event, PlayState, Controller};
 
 
@@ -30,7 +29,7 @@ fn main() {
 
   let mut game_controller = Controller::new();
 
-  info!("Beginning game loop")
+  info!("Beginning game loop");
   'game_loop: loop {
 
     for event in event_pump.poll_iter() {
@@ -57,6 +56,6 @@ fn main() {
     canvas.present();
     std::thread::sleep(Duration::from_millis((1000 / game_controller.speed) as u64));
   }
-  
+
   println!("Thanks for playing.");
 }

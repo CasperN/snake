@@ -3,10 +3,8 @@ use sdl2::render::Canvas;
 use sdl2::keyboard::Keycode;
 use sdl2::event::Event;
 
-use game_state::{SnakeGame, Movement, SnakeState};
+use game_state::{SnakeGame, Movement, SnakeState, draw_snake};
 use game_state::Movement::{Up, Down, Left, Right};
-
-use game_render::draw_snake;
 
 use self::PlayState::{Play, Pause, Quit, End};
 
@@ -37,28 +35,41 @@ impl Controller {
                 moved_this_turn:false}
   }
 
-
-
   pub fn control_update(&mut self, ui: UserInput){
 
     debug!("Control event: {:?}", ui);
-    match ui {
+    match self.play_state {
 
-      UserInput::Movement(direction) => {
-        if !self.moved_this_turn {
-          self.game.direction = direction
-        }
-        self.moved_this_turn = true;
+      Play => {
+        match ui {
+          UserInput::Movement(direction) => {
+            if !self.moved_this_turn {
+              self.game.direction = direction
+            }
+            self.moved_this_turn = true;
+          },
+
+          UserInput::Menu(menu) => {
+            match menu {
+              Pause => {
+                  self.play_state = if self.play_state == Play { Pause } else { Play };
+              },
+              Quit => {
+                self.play_state = Quit;
+              }
+              _ => {unreachable!();}
+            }
+          }
+        };
       },
 
-      UserInput::Menu(menu) => {
-        self.play_state = menu;
-      }
-    };
+      _ => {info!("Not sure yet");}
+
+    }
   }
 
   pub fn time_update(&mut self){
-    debug!("time step")
+    debug!("time step");
 
     match self.play_state {
 
@@ -67,18 +78,23 @@ impl Controller {
         match snake_state {
           SnakeState::Fed => {self.score += 1;},
           SnakeState::Alive => {},
-          SnakeState::Cannibaled | SnakeState::Walled => {self.play_state = Quit;}
+          SnakeState::Cannibaled | SnakeState::Walled => {
+            info!("Game over!");
+            self.play_state = End;
+          }
         }
         self.moved_this_turn = false;
       },
-
       _ => {}
     };
   }
 
   pub fn draw(&self, canvas:&mut Canvas<sdl2::video::Window>){
     match self.play_state {
-      _ => draw_snake(&self.game, canvas) // TODO Draw menu when in that state
+      Play => draw_snake(&self.game, canvas),
+      Pause => {},
+      Quit => {},
+      End => {}
     };
   }
 }
